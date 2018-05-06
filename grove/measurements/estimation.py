@@ -99,7 +99,7 @@ def get_parity(pauli_terms, bitstring_results):
 
 def estimate_pauli_sum(pauli_terms, basis_transform_dict, program,
                        variance_bound, quantum_resource,
-                       commutation_check=True):
+                       commutation_check=True, return_means=False):
     """
     Estimate the mean of a sum of pauli terms to set variance
 
@@ -124,8 +124,14 @@ def estimate_pauli_sum(pauli_terms, basis_transform_dict, program,
     :param Bool commutation_check: Optional flag toggling a safety check
                                    ensuring all terms in `pauli_terms`
                                    commute with each other
+    :param Bool return_means: Opional flag to return expected value of raw
+                              `pauli_terms`
     :return: estimated expected value, covariance matrix, variance of the
              estimator, and the number of shots taken
+
+             if `return_means=True` then returnedd values are:
+             estimated expected value, covariance matrix, variance of the
+             estimator, the number of shots taken, and the individual means
     """
     if not isinstance(pauli_terms, (list, PauliSum)):
         raise TypeError("pauli_terms needs to be a list or a PauliSum")
@@ -174,6 +180,10 @@ def estimate_pauli_sum(pauli_terms, basis_transform_dict, program,
         covariance_mat = np.cov(results)
         sample_variance = coeff_vec.T.dot(covariance_mat).dot(coeff_vec) / \
                           results.shape[1]
+
+    if return_means:
+        return coeff_vec.T.dot(np.mean(results, axis=1)), covariance_mat, \
+               sample_variance, results.shape[1], np.mean(results, axis=1)
 
     return coeff_vec.T.dot(np.mean(results, axis=1)), covariance_mat, \
            sample_variance, results.shape[1]
@@ -235,9 +245,8 @@ def estimate_locally_commuting_operator(program, pauli_sum,
                                      variance_bound_per_set,
                                      quantum_resource,
                                      commutation_check=False)
-
         expected_value += results[0].real
         total_shots += results[3]
         estimator_variance += results[2]
 
-    return expected_value, estimator_variance, total_shots
+    return [expected_value[0].real, estimator_variance[0, 0].real, total_shots]
